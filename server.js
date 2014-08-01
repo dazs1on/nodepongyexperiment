@@ -18,6 +18,11 @@ console.log('Listening on port 8080.....');
 pong.use("/", express.static(__dirname + '/public')); //use public directory, i believe this is unix-like(lol)
 
 io.sockets.on('connection', function (socket) {
+  console.log('User connected');
+    socket.on('disconnect', function(){
+        console.log('User disconnected');
+        });
+    
   socket.on('msg', function (data) {
     io.sockets.emit('new', data);
   });
