@@ -3,27 +3,112 @@
  * Rewrote entire thing
  */
 
-var express = require('express');
-var pong = express();
-var server = require('http').createServer(pong);
-var io = require('socket.io').listen(server);
+// 1 - Start server with assigned port as localhost:port
+// 2 - Wait for socket for player 1
+// 3 - Ask for nickname to use in both chat and the game
+// 4 - Player 1 can play by himself until player 2 joins
+// 5 - Game automagically resets when lifes get to 0
 
-var player1 = undefined;
-var player2 = undefined;
-var socket = undefined;
+// Server Constructor
+function Server( port )
+{
+  this.port = process.env.PORT || port;
+  this.express = require('express');  
+  this.app = this.express.createServer();
+} 
 
-server.listen(8080);
-console.log('Listening on port 8080.....');
-
-pong.use("/", express.static(__dirname + '/public')); //use public directory, i believe this is unix-like(lol)
-
-io.sockets.on('connection', function (socket) {
-  console.log('User connected');
-    socket.on('disconnect', function(){
-        console.log('User disconnected');
-        });
+// Server methods
+Server.prototype = {
     
-  socket.on('msg', function (data) {
-    io.sockets.emit('new', data);
-  });
-});
+    // we want the server to use html
+    configure: function Server_configure () {
+      var server = this;
+      this.app.configure(function () {
+        server.app.use(server.express.static(__dirname + '/public'));
+        server.app.set('views', __dirname);
+        
+        // disable layout
+        server.app.set("view options", {layout: false});
+        
+        server.app.register('.html', {
+          compile: function(str, options){
+            return function(locals){
+              return str;
+            };
+          }
+        });
+      });
+    },
+    
+    // Direct to go to index.html     
+    setRoutes: function Server_setRoutes () {
+      this.app.get('/', function (req, res) {
+        res.render('index.html');
+      });
+    },
+    
+    // Set to listen on port
+    listen: function Server_listen () {
+      var server = this;
+      this.app.listen(this.port, function () {
+        var addr = server.app.address();
+        console.log('   app listening on http://' + addr.address + ':' + addr.port);
+      });    
+    }
+}
+
+// Pong Constructor
+function PingPong () {
+  this.pong = require('./public/lib/pong');
+  this.sio = require('socket.io');
+  this.io = this.sio.listen(server.app, { log: false });
+  this.nicknames = {};
+  this.state = { intervalId: 0, connections: 0 };
+}
+
+// Pong Method
+PingPong.prototype = {
+
+  // Start game when 1 websocket is open
+  play: function PingPong_play () {
+    var context = this;
+    this.io.sockets.on('connection', function (socket) {
+      
+      socket.on('user message', function (msg) {
+        socket.broadcast.emit('user message', socket.nickname, msg);
+      });
+
+      socket.on('nickname', function (nick, fn) {
+        if (context.nicknames[nick]) {
+          fn(true);
+        } else {
+          fn(false);  
+          
+          //run the main pong method from /public/lib/pong.js
+          context.pong.main( context.io, socket, context.state );
+          
+          context.nicknames[nick] = socket.nickname = nick;
+          socket.broadcast.emit('announcement', nick + ' connected');
+          context.io.sockets.emit('nicknames', context.nicknames);
+        }
+      });  
+
+      socket.on('disconnect', function () {
+        if (!socket.nickname) return;
+        delete context.nicknames[socket.nickname];
+        
+        context.pong.removePlayer( context.io, socket );
+        socket.broadcast.emit('announcement', socket.nickname + ' disconnected');
+        socket.broadcast.emit('nicknames', context.nicknames);
+      });
+    });
+  }
+}
+
+var server = new Server( 8080 );
+server.configure();
+server.setRoutes();
+server.listen();
+
+var pingpong = new PingPong();
+pingpong.play();

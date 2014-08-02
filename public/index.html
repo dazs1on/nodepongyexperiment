@@ -3,32 +3,339 @@
 <head>
     <title>Node Pong and Chat</title>
 	<link rel="stylesheet",type="text/css" href="style.css"/>
-	<script type="text/javascript" src="/socket.io/socket.io.js"></script>
 	 <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
 	<script type="text/javascript" src="http://cdn.socket.io/stable/socket.io.js"></script>
-	<script type="text/javascript" src="chat.js"></script>
 </head>
 
 <body>
+ <div id="wrapper">
+        <div id="nickname">
+              <form id="set-nickname" class="wrap">
+                <h1>Multiplayer Ping Pong</h1>
+                <p>Please type in your nickname and press enter to play.</p>
+                <input id="nick" />
+                <p id="nickname-err"></p>
+              </form>
+        </div>
+        <div id="main">
+          <div id="score-board">
+            <div id="top">7</div>
+            <div id="bottom">7</div>
+            <div id="player1">Top</div>
+            <div id="player2">Bottom</div>
+          </div>
+          <div id="messages">
+            <div id="nicknames"></div>
+            <div id="lines"></div>
+          </div>
+          <form id="send-message">
+            <input id="message"><button>Send</button>
+          </form>
+        </div>
+        <canvas id="court"></canvas>
+      </div>
+      <div id="countdown"></div>
+    </body>
     
-<script src="aipong.js"></script>
+<script>
+	/**
+ * PingPong Constructor.
+ */
+function PingPong ( options ) 
+{    
+  this.socket = io.connect();
+  this.canvas = document.getElementById("court");
+	this.ctx = this.canvas.getContext('2d');
+  this.constants = { court: { width: 0, height: 0, adjusted: false }, 
+                     colors: (options.environment) ? options.environment : 
+                    { court: "black", ball: "white", paddle: "white" },
+                     paddle: { width: 0, 
+                               height: 0, 
+                               delta: 0 },
+                     ball: { radius: 0 },
+                     player: { id: 0,
+                               name: "" },
+                     players: { names: "" } };
+  this.state = { paddles: {}, ball: { left: 0, top: 0 }, sides: {} };
+}
+
+/**
+ * PingPong methods
+ */
+PingPong.prototype = {
+  
+  /**
+   * define game constants
+   */      
+  _defineConstants: function PingPong_defineConstants (data)
+  {
+    $('#splash').hide();
+    this.constants.court.width = data.court.width;
+    this.constants.court.height = data.court.height;
+    this.constants.paddle.delta = data.paddle.delta;
+    this.constants.paddle.width  = data.paddle.width;
+    this.constants.paddle.height  = data.paddle.height;
+    this.constants.ball.radius = data.ball.radius;   
+    this.constants.player.id = data.player.id; 
+    this.constants.player.name = data.player.names[data.player.id];
+    this.constants.players.names = data.player.names;
+  },
+  
+  /**
+   * display chat messages in the DOM
+   */
+  _displayMessage: function PingPong_displayMessage (from, msg)
+  {
+    var html = $('<p>').append($('<b>').text(from), msg);
+    $('#lines').append(html);
+  },  
+  
+  /**
+   * connect chat with the sever
+   */
+  startChat: function PingPong_startChat ()
+  {
+    var pingpong = this;
+    this.socket.on('connect', function () {
+      $('#chat').addClass('connected');
+    });
+
+    this.socket.on('announcement', function (msg) {
+      $('#lines').append($('<p>').append($('<em>').text(msg)));
+    });
+
+    this.socket.on('nicknames', function (nicknames) {
+      $('#nicknames').empty().append($('<span>Online: </span>'));
+      for (var i in nicknames) {
+        $('#nicknames').append($('<b>').text(nicknames[i]));
+      }
+    });
+
+    this.socket.on('user message', pingpong.message);
+    this.socket.on('reconnect', function () {
+      $('#lines').remove();
+      pingpong._displayMessage('System', 'Reconnected to the server');
+    });
+  },
+  
+  /**
+   * display chat nicknames in the DOM
+   */  
+  showChatNickNames: function PingPong_showChatNickNames ()
+  {
+    var pong = this;
+    $(function () {
+      $('#set-nickname').submit(function (ev) {
+        if ($('#nick').val().trim()) {                
+          pong.socket.emit('nickname', $('#nick').val().trim(), function (set) {
+            if (!set) {
+              $('#nickname').delay(500).fadeOut();
+              _clear();
+              return $('#chat').addClass('nickname-set');
+            }
+            $('#nickname-err').html('Nickname already in use');
+            $('#nickname-err').css({opacity:1.0, visibility: "visible"})
+            .delay(1000)
+            .animate({opacity:0.0},500);
+          });
+        } else {
+          $('#nickname-err').html('Nickname cannot be blank');
+          $('#nickname-err').css({opacity:1.0, visibility: "visible"})
+          .delay(1000)
+          .animate({opacity:0.0},500);
+        }              
+        return false;
+      });
+
+      $('#send-message').submit(function () {
+        pong._displayMessage('me', $('#message').val());
+        pong.socket.emit('user message', $('#message').val());
+        _clear();
+        $('#lines').get(0).scrollTop = 10000000;
+        return false;
+      });
+
+      function _clear () {
+        $('#message').val('').focus();
+      };
+    });       
+  },
+  
+  /**
+   * setup the game environment
+   */  
+  setEnvironment: function pingpong_setEnvironment ()
+  {
+    var pong = this;
+    this.socket.on('environment', function( data ) {
+      pong._defineConstants( data );
+    });
+  },
+  
+  /**
+   * set the position of the paddles
+   */ 
+  setPaddles: function pingpong_setPaddles ()
+  {
+    var pong = this;
+    this.socket.on('paddles', function(data) {
+      var paddles = data.positions;
+      // Overwrite the server's version of my own paddle position
+      // if I already know where I am so I don't redraw in the old spot.
+      if (pong.state.paddles[pong.constants.player.id]) {
+        paddles[pong.constants.player.id] = pong.state.paddles[pong.constants.player.id];
+      }
+      pong.state.paddles = paddles;
+      pong.state.sides = data.sides;
+      if (!pong.constants.court.adjusted) {
+        pong.constants.court.adjusted = true;
+        if (pong.state.sides.top == pong.constants.player.id) {
+          pong.canvas.className = 'topPlayer';
+        }
+      }
+    });
+  },
+  
+  /**
+   * set the position of the ball
+   */ 
+  setBallPosition: function pingpong_setBallPosition ()
+  {
+    var pong = this;
+    this.socket.on('ball', function (data) {
+      pong.state.ball.lastMessageReceived = Date.now();
+      pong.state.ball.x = data.vector.x;
+      pong.state.ball.deltaX = data.vector.deltaX;
+      pong.state.ball.y = data.vector.y;
+      pong.state.ball.deltaY = data.vector.deltaY;
+      pong._drawCanvas();
+    });  
+  },
+  
+  /**
+   * update the scoreboard
+   */ 
+  setDisplayScore: function pingpong_setDisplayScore ()
+  {
+    this.socket.on('score', function (data) {
+      $('#top').html( (data.lives.top >= 0) ? data.lives.top: 0);
+      $('#bottom').html( (data.lives.bottom >= 0) ? data.lives.bottom: 0);
+    });
+  },
+
+  startDrawing: function pingpong_startDrawing ()
+  {
+    this._drawCanvas();
+    var animationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame ||
+                         window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
+    if (animationFrame)
+      animationFrame(this.startDrawing.bind(this));
+  },
+
+  /**
+   * update the canvas
+   */ 
+  _drawCanvas: function pingpong_drawCanvas ()
+  {
+    this.canvas.width = this.constants.court.width;
+    this.canvas.height = this.constants.court.height;
+    this.ctx.fillStyle = this.constants.colors.court;
+    this.ctx.fillRect(0, 0, this.constants.court.width, this.constants.court.height);
+    this.ctx.fillStyle = this.constants.colors.paddle;
+    
+    this.ctx.fillRect((this.state.paddles[this.state.sides.bottom] / 100 * 
+                       this.constants.court.width) - (this.constants.paddle.width / 2),
+                       this.constants.court.height - this.constants.paddle.height,
+                       this.constants.paddle.width,
+                       this.constants.paddle.height);
+           
+    this.ctx.fillRect((this.state.paddles[this.state.sides.top] / 100 * 
+                       this.constants.court.width) - (this.constants.paddle.width / 2),
+                       0, this.constants.paddle.width, this.constants.paddle.height);
+           
+    this.ctx.fillRect(0, (this.state.paddles[this.state.sides.left] / 100 *
+                     this.constants.court.height) - (this.constants.paddle.width / 2),
+                     this.constants.paddle.height, this.constants.paddle.width);
+           
+    this.ctx.fillRect(this.constants.court.width - this.constants.paddle.height,
+                     (this.state.paddles[this.state.sides.right] / 100 * 
+                      this.constants.court.height) - (this.constants.paddle.width / 2),				 
+                      this.constants.paddle.height, 
+                      this.constants.paddle.width);
+
+    if (typeof this.state.ball.x != "undefined" &&
+        typeof this.state.ball.y != "undefined") {
+      this.ctx.fillStyle = this.constants.colors.ball;
+      this.ctx.beginPath();
+      var timeDelta = (Date.now() - this.state.ball.lastMessageReceived) / 10;
+      var ballPosX = this.state.ball.x + timeDelta * this.state.ball.deltaX;
+      var ballPosY = this.state.ball.y + timeDelta * this.state.ball.deltaY;
+      console.log(ballPosX + ", " + ballPosY);
+      this.ctx.arc( ballPosX, ballPosY, this.constants.ball.radius, 0, Math.PI * 2 );
+      this.ctx.fill();
+    }
+  },
+  
+  /**
+   * update the paddle position
+   * @param delta The number of pixels to move the paddle
+   */ 
+  _movePaddle: function pingpong_movePaddle (delta)
+  {
+    var newLeft = this.state.paddles[this.constants.player.id] + delta;
+    if (newLeft >= 100) {
+      newLeft = 100;
+    } else if (newLeft <= 0) {
+      newLeft = 0;
+    }
+    if (newLeft != this.state.paddles[this.constants.player.id]) {
+      this.state.paddles[this.constants.player.id] = newLeft;
+      this.socket.emit('paddle', {left: this.state.paddles[this.constants.player.id] });
+      this._drawCanvas();
+    }
+  },
+  
+  /**
+   * set paddle controls to use left/right keys
+   */ 
+  setPaddleControls: function pingpong_setPaddleControls ()
+  {
+    var pong = this;
+    window.addEventListener('keydown', function onKeyDown(aEvent) {
+      switch (aEvent.which) {
+        case 37: // Left
+          if (pong.state.sides.top == pong.constants.player.id || 
+              pong.state.sides.right == pong.constants.player.id) {
+            pong._movePaddle(pong.constants.paddle.delta);
+          } else {
+            pong._movePaddle(-pong.constants.paddle.delta);
+          }
+          break;
+        case 39: // Right
+          if (pong.state.sides.top == pong.constants.player.id || 
+              pong.state.sides.right == pong.constants.player.id) {
+            pong._movePaddle(-pong.constants.paddle.delta);
+          } else {
+            pong._movePaddle(pong.constants.paddle.delta);
+          }
+          break;
+      }
+    }, false);  
+  }
+}
+
+var pingpong = new PingPong({environment: { court:"green", ball:"yellow", paddle:"orange"} });
+pingpong.startChat();
+pingpong.showChatNickNames();
+pingpong.setEnvironment();
+pingpong.setPaddles();
+pingpong.setBallPosition();
+pingpong.setPaddleControls();
+pingpong.setDisplayScore();
+pingpong.startDrawing();
+
+</script>
 
 	
 
-<div id="wrapper">
-      <div id="messages"></div>
-      <div class="nic">
-        Username
-        <input id="name" name="name" type="text"/>
-      </div>
-      <textarea id="message"></textarea>
-      <input id="send" type="submit" value="Send"/> 
-    </div>
-    <script type="text/javascript">
-      $(document).ready(function() {
-        Chat.initialize('http://localhost');
-      });
-    </script>
-    
-</body>
 </html>
