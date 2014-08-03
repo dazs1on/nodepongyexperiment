@@ -1,8 +1,3 @@
-/* Code had problems loading the index of the site
- * Logged to console to figure stuff out
- * Rewrote entire thing
- */
-
 // 1 - Start server with assigned port as localhost:port
 // 2 - Wait for socket for player 1
 // 3 - Ask for nickname to use in both chat and the game
@@ -52,14 +47,14 @@ Server.prototype = {
       var server = this;
       this.app.listen(this.port, function () {
         var addr = server.app.address();
-        console.log('   app listening on http://' + addr.address + ':' + addr.port);
+        console.log('Listening on port' + addr.port + '...');
       });    
     }
 }
 
 // Pong Constructor
 function PingPong () {
-  this.pong = require('./public/lib/pong');
+  this.pong = require('./public/client');
   this.sio = require('socket.io');
   this.io = this.sio.listen(server.app, { log: false });
   this.nicknames = {};
