@@ -1,3 +1,8 @@
+/* Code had problems loading the index of the site
+ * Logged to console to figure stuff out
+ * Rewrote entire thing
+ */
+
 // 1 - Start server with assigned port as localhost:port
 // 2 - Wait for socket for player 1
 // 3 - Ask for nickname to use in both chat and the game
@@ -47,7 +52,7 @@ Server.prototype = {
       var server = this;
       this.app.listen(this.port, function () {
         var addr = server.app.address();
-        console.log('Listening on port' + addr.port + '...');
+        console.log('Listening on' + addr.port+ '...');
       });    
     }
 }
