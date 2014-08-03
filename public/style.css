@@ -1,77 +1,183 @@
-body{
-    font:14px Arial, Trebuchet Ms, sans-serif;
-    background:#DDD;
-    padding:50px;
-}
-
-
-
-#canvas{
-   float: left;
-display: block;
-position: fixed;
-margin: auto;
-top: 0;
-bottom: 0;
-left: 0;
-right: 0;
-}
-
 #wrapper {
-   float: right;
-  margin : 0 auto;
-  padding : 20px;
-  width : 400px;
-  background-color : #0B2126;
+  width: 772px;
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  bottom: 0;
+  height: 500px;
+  margin: auto auto;
+  border: 18px solid #695F5F;
+  border-radius: 14px;
 }
 
+#main,
+#nickname,
 #messages {
-  overflow : auto;
-  height : 300px;
+  width: 270px;
+}
+#main {
+  float: right;
+  position: relative;
+  border: 1px solid #695F5F;
 }
 
-.msg {
-  padding : 4px 0;
+#main #score-board {
+  background-color: #695F5F;
+  height: 120px;
 }
 
-.msg .name {
-  font-style : italic;
-  font-size : 14px;
+#countdown {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 150px;
+  height: 150px;
+  margin-left: -209px;
+  margin-top: -170px;
+  z-index: 40;
+  opacity: 0.0;
 }
 
-.msg.old {
-  color : #000000;
+#player1, #player2 {
+  width: 50%;
+  float: right;
+  text-align: center;
+  color: orange;
 }
 
-.nic {
-  margin : 10px 0;
+
+#top, #bottom {
+  width: 50%;
+  float: right;
+  text-align: center;
+  font-size: 100px;
+  font-weight: bold;
+  height:100px;
 }
 
-#message {
-  float : left;
-  margin-right : 10px;
-  width : 200px;
-  height: 72px;
+#nickname,
+#connecting {
+  position: absolute;
+  height: 100%;
+  z-index: 100;
+  left: 0;
+  background: white;
+  text-align: center;
+  width: 773px;
+  font: 15px Georgia;
+  color: #666;
+  display: block;
 }
-
-#wrapper,
-#name,
-#message,
-#send {
-  border : 1px solid #B5B5B5;
-  -webkit-border-radius : 6px;
-  -moz-border-radius : 6px;
-  border-radius : 6px;
-  background-color : #ededed;
-  color : #555;
+#nickname .wrap,
+#connecting .wrap {
+  padding-top: 150px;
 }
-
-/* generated button */
-#send {
-  display : inline-block;
-  padding : 26px 20px;
-  text-decoration : none;
-  text-shadow : 1px 1px 0px #ffffff;
-  font-size : 15px;
-  font-family : arial;
+#nickname input {
+  border: 1px solid #ccc;
+  padding: 10px;
+}
+#nickname input:focus {
+  border-color: #999;
+  outline: 0;
+}
+#nickname #nickname-err {
+  color: #8b0000;
+  font-size: 12px;
+  opacity: 0.0;
+}
+.connected #connecting {
+  display: none;
+}
+.nickname-set #nickname {
+  display: none;
+}
+#messages {
+  height: 348px;
+  background: #eee;
+}
+#messages em {
+  text-shadow: 0 1px 0 #fff;
+  color: #999;
+}
+#messages p {
+  padding: 0;
+  margin: 0;
+  font: 12px Helvetica, Arial;
+  padding: 5px 10px;
+}
+#messages p b {
+  display: inline-block;
+  padding-right: 10px;
+}
+#messages p:nth-child(even) {
+  background: #fafafa;
+}
+#messages #nicknames {
+  background: #ccc;
+  padding: 2px 4px 4px;
+  font: 11px Helvetica;
+}
+#messages #nicknames span {
+  color: #000;
+}
+#messages #nicknames b {
+  display: inline-block;
+  color: #fff;
+  background: #999;
+  padding: 3px 6px;
+  margin-right: 5px;
+  border-radius: 10px;
+  text-shadow: 0 1px 0 #666;
+}
+#messages #lines {
+  height: 441px;
+  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+#messages #lines::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+#messages #lines::-webkit-scrollbar-button:start:decrement,
+#messages #lines ::-webkit-scrollbar-button:end:increment {
+  display: block;
+  height: 10px;
+}
+#messages #lines::-webkit-scrollbar-button:vertical:increment {
+  background-color: #fff;
+}
+#messages #lines::-webkit-scrollbar-track-piece {
+  background-color: #fff;
+  -webkit-border-radius: 3px;
+}
+#messages #lines::-webkit-scrollbar-thumb:vertical {
+  height: 50px;
+  background-color: #ccc;
+  -webkit-border-radius: 3px;
+}
+#messages #lines::-webkit-scrollbar-thumb:horizontal {
+  width: 50px;
+  background-color: #fff;
+  -webkit-border-radius: 3px;
+}
+#send-message {
+  background: #fff;
+  position: relative;
+}
+#send-message input {
+  border: none;
+  height: 30px;
+  padding: 0 10px;
+  line-height: 30px;
+  width: 250px;
+}
+#send-message input:focus {
+  outline: 0;
+}
+#send-message button {
+  position: absolute;
+  top: 5px;
+  right: 5px;
 }
