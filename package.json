@@ -1,0 +1,27 @@
+{
+  "name": "pongynodeexperiment",
+  "version": "0.0.0",
+  "description": "nodepongyexperiment - http://i.imgur.com/wdYLNJT.png ===================",
+  "main": "server.js",
+  "dependencies": {
+    "nib": "^0.2.0",
+    "express": "^2.5.5",
+    "stylus": "^0.19.0",
+    "socket.io": "^0.9.1-1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dazs1on/nodepongyexperiment.git"
+  },
+  "author": "dazs1on",
+  "license": "none",
+  "bugs": {
+    "url": "https://github.com/dazs1on/nodepongyexperiment/issues"
+  },
+  "homepage": "https://github.com/dazs1on/nodepongyexperiment"
+}
