@@ -1,10 +1,11 @@
-/**
- * Calculate Ball Position.
- */
-var constants={court:{width: 500, height: 500},
-    paddle:{ width: 100, height: 15, delta: 3 },
-    ball:{ radius: 10, deltaLeft: 2, deltaTop: 2, interval: 10 } };
-    
+// 1. Client is told by the server to draw canvas
+// 2. Client sends keystate updates to the server
+// 3. Client redraws canvas each and everytime the server updates ball and paddle positions
+// 4. Client is told by the server what position they're in(top or bottom)
+var constants = {court: {width: 500, height: 500},
+    paddle: { width: 100, height: 15, delta: 3 },
+    ball: { radius: 10, deltaLeft: 2, deltaTop: 2, interval: 10 } };
+
 var state = { paddles: {},
     ball: { left: constants.court.width / 2, top: constants.court.height / 2 },
     bottomPaddle: 0,
@@ -14,40 +15,37 @@ var state = { paddles: {},
     names: {}
     }
 
-exports.main = function( io, socket, serverState ) {
-  io.sockets.emit('score', { 
-  loser: 'top', lives: { top: state.player2Lives, bottom: state.player1Lives } 
+exports.main = function (io, socket, serverState) {
+  io.sockets.emit('score',{ 
+      loser: 'top', lives: { top: state.player2Lives, bottom: state.player1Lives} 
 });
 
 var calculateBallPosition = function() {
-    var left = state.ball.left + constants.ball.deltaLeft;
-    var top = state.ball.top + constants.ball.deltaTop;
-
-   
-        
+    var left = state.ball.left + constants.ball.deltaLeft,
+        top = state.ball.top + constants.ball.deltaTop;
        // bottom
-        if (top + constants.ball.radius >= constants.court.height - constants.paddle.height) {
-                if ( state.bottomPaddle ) {             
-                        if ( ballHitBottomPaddle( left ) ) {
-                                top = constants.court.height - constants.paddle.height - constants.ball.radius;
+            if (top + constants.ball.radius >= constants.court.height - constants.paddle.height) {
+                if (state.bottomPaddle){             
+                        if (ballHitBottomPaddle(left)){
+                        top = constants.court.height - constants.paddle.height - constants.ball.radius;
                                 constants.ball.deltaTop = -constants.ball.deltaTop;                     
                                 socket.emit('ball', { vector: { x: state.ball.left, y: state.ball.top,
                                                                                                                                                                 deltaX: constants.ball.deltaLeft, deltaY: constants.ball.deltaTop }});
-                        } else {
-                                console.log( 'game over bottom');
-        state.player1Lives -= 1;
-        io.sockets.emit('score', { 
-          loser: 'top', lives: { top: state.player2Lives, bottom: state.player1Lives } 
+                    } else {
+                        console.log('game over bottom');
+                        state.player1Lives -= 1;
+                        io.sockets.emit('score',{ 
+                            loser: 'top', lives: { top: state.player2Lives, bottom: state.player1Lives } 
         });
-                                left = constants.court.width / 2;
-                                top = constants.court.height / 2;                       
-                                socket.emit('ball', { vector: { x: state.ball.left, y: state.ball.top,
+                        left = constants.court.width / 2;
+                        top = constants.court.height / 2;                       
+                          socket.emit('ball', { vector: { x: state.ball.left, y: state.ball.top,
                                                                                                                                                                 deltaX: constants.ball.deltaLeft, deltaY: constants.ball.deltaTop }});
                         }
-                } else if ( top + constants.ball.radius >= constants.court.height ){
-                        top = constants.court.height - constants.ball.radius;
-                        constants.ball.deltaTop = -constants.ball.deltaTop;
-                        socket.emit('ball', { vector: { x: state.ball.left, y: state.ball.top,
+                } else if (top + constants.ball.radius >= constants.court.height) {
+                    top = constants.court.height - constants.ball.radius;
+                    constants.ball.deltaTop = -constants.ball.deltaTop;
+                    socket.emit('ball', { vector: { x: state.ball.left, y: state.ball.top,
                                                                                                                                                         deltaX: constants.ball.deltaLeft, deltaY: constants.ball.deltaTop }});
                 }
         }
