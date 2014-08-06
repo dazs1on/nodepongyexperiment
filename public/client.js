@@ -4,25 +4,73 @@
 // 4. Client is told by the server what position they're in(top or bottom)
 var constants = {court: {width: 500, height: 500},
     paddle: { width: 100, height: 15, delta: 3 },
-    ball: { radius: 10, deltaLeft: 2, deltaTop: 2, interval: 10 } };
+    ball: { radius: 10, deltaLeft: 2, deltaTop: 2, interval: 5 } };
 
+//default state values
 var state = { paddles: {},
-    ball: { left: constants.court.width / 2, top: constants.court.height / 2 },
+    ball: { left: -5, top: 50},
     bottomPaddle: 0,
     topPaddle: 0,
-    player1Lives: 7,
-    player2Lives: 7,
+    player1Lives: 200,
+    player2Lives: 200,
     names: {}
     }
 
-exports.main = function (io, socket, serverState) {
-  io.sockets.emit('score',{ 
+  exports.main = function (io, socket, serverState) {
+    io.sockets.emit('score',{ 
       loser: 'top', lives: { top: state.player2Lives, bottom: state.player1Lives} 
 });
 
 var calculateBallPosition = function() {
     var left = state.ball.left + constants.ball.deltaLeft,
         top = state.ball.top + constants.ball.deltaTop;
+
+
+      //right wall
+                if (left + constants.ball.radius >= constants.court.width - constants.paddle.height ) {
+                    if ( state.rightPaddle ) {
+                      if ( ballHitRightPaddle( top ) ) {
+                          left = constants.court.width - constants.paddle.height - constants.ball.radius;
+                          constants.ball.deltaLeft = -constants.ball.deltaLeft;
+                            socket.emit('ball', { vector: { x: state.ball.left, y: state.ball.top,
+                              deltaX: constants.ball.deltaLeft, deltaY: constants.ball.deltaTop }});
+                      } else {
+              
+                       left = constants.court.width / 2
+                        top = constants.court.height / 2;
+                        socket.emit('ball', { vector: { x: state.ball.left, y: state.ball.top,
+                          deltaX: constants.ball.deltaLeft, deltaY: constants.ball.deltaTop }});
+                      } 
+                    } else if ( left + constants.ball.radius >= constants.court.width ) {
+                        left = constants.court.width - constants.ball.radius;
+                        constants.ball.deltaLeft = -constants.ball.deltaLeft;
+                        socket.emit('ball', { vector: { x: state.ball.left, y: state.ball.top,
+                          deltaX: constants.ball.deltaLeft, deltaY: constants.ball.deltaTop }});
+                        }
+                            }
+
+      // left wall
+            if (left - constants.ball.radius <= constants.paddle.height ) {  
+              if (state.leftPaddle ) {
+                      if ( ballHitLeftPaddle( top ) ) {
+                        left = constants.paddle.height + constants.ball.radius;
+                                  constants.ball.deltaLeft = -constants.ball.deltaLeft; 
+                                  socket.emit('ball', { vector: { x: state.ball.left, y: state.ball.top,
+                                    deltaX: constants.ball.deltaLeft, deltaY: constants.ball.deltaTop }});
+                        } else {
+                        
+                          left = constants.court.width / 2;
+                          top = constants.court.height / 2;
+                          socket.emit('ball', { vector: { x: state.ball.left, y: state.ball.top,
+                            deltaX: constants.ball.deltaLeft, deltaY: constants.ball.deltaTop }});
+                          }
+                          } else if (left - constants.ball.radius <= 0) {
+                              left = 0 + constants.ball.radius;
+                              constants.ball.deltaLeft = -constants.ball.deltaLeft; 
+                              socket.emit('ball', { vector: { x: state.ball.left, y: state.ball.top,
+                                  deltaX: constants.ball.deltaLeft, deltaY: constants.ball.deltaTop }});
+                          }
+                          }
        // bottom
             if (top + constants.ball.radius >= constants.court.height - constants.paddle.height) {
                 if (state.bottomPaddle){             
@@ -36,9 +84,9 @@ var calculateBallPosition = function() {
                         state.player1Lives -= 1;
                         io.sockets.emit('score',{ 
                             loser: 'top', lives: { top: state.player2Lives, bottom: state.player1Lives } 
-        });
-                        left = constants.court.width / 2;
-                        top = constants.court.height / 2;                       
+                        });
+                        left = -5;
+                        top = 50;                       
                           socket.emit('ball', { vector: { x: state.ball.left, y: state.ball.top,
                                                                                                                                                                 deltaX: constants.ball.deltaLeft, deltaY: constants.ball.deltaTop }});
                         }
@@ -65,8 +113,8 @@ var calculateBallPosition = function() {
         io.sockets.emit('score', { 
           loser: 'top', lives: { top: state.player2Lives, bottom: state.player1Lives } 
         });
-                                left = constants.court.width / 2;
-                                top = constants.court.height / 2;                       
+                                left = 10;
+                                top = 40;                       
                                 socket.emit('ball', { vector: { x: state.ball.left, y: state.ball.top,
                                                                                                                                                                 deltaX: constants.ball.deltaLeft, deltaY: constants.ball.deltaTop }});
                         }
@@ -116,10 +164,7 @@ var addPlayer = function( id ) {
         state.paddles[id] = 50;
 }
 
-
-
-
-  addPlayer( socket.id );
+addPlayer( socket.id );
   
         socket.emit('environment', { court:  {  width:  constants.court.width, 
                                height: constants.court.height,
@@ -138,7 +183,7 @@ var addPlayer = function( id ) {
       }, constants.ball.interval );  
   }
   
-  io.sockets.emit('paddles', { positions: state.paddles, sides: {bottom: state.bottomPaddle, top: state.topPaddle, left: state.leftPaddle, right: state.rightPaddle }});     
+  io.sockets.emit('paddles', { positions: state.paddles, sides: {bottom: state.bottomPaddle, top: state.topPaddle }});     
 
   socket.on('paddle', function (data) {
     io.sockets.emit('paddles', { positions: state.paddles, sides: {bottom: state.bottomPaddle, top: state.topPaddle, left: state.leftPaddle, right: state.rightPaddle }});     

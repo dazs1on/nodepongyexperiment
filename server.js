@@ -52,7 +52,7 @@ Server.prototype = {
       var server = this;
       this.app.listen(this.port, function () {
         var addr = server.app.address();
-        console.log('Listening on' + addr.port+ '...');
+        console.log('Listening on ' + addr.port+ '...');
       });    
     }
 }
@@ -84,7 +84,7 @@ PingPong.prototype = {
         } else {
           fn(false);  
           
-          //run the main pong method from /public/lib/pong.js
+          //run the main pong method from /public/lib/client.js
           context.pong.main( context.io, socket, context.state );
           
           context.nicknames[nick] = socket.nickname = nick;
@@ -108,7 +108,8 @@ PingPong.prototype = {
 var server = new Server( 8080 );
 server.configure();
 server.setRoutes();
-server.listen();
+server.listen(process.env.PORT);
 
 var pingpong = new PingPong();
 pingpong.play();
+
